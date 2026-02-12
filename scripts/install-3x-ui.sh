@@ -189,7 +189,7 @@ install_dependencies() {
   log "Running apt update and installing dependencies"
   export DEBIAN_FRONTEND=noninteractive
   run apt-get update
-  run apt-get install -y --no-install-recommends curl tar ca-certificates
+  run apt-get install -y --no-install-recommends curl tar ca-certificates nload
 }
 
 download_and_unpack() {

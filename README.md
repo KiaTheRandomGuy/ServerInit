@@ -8,6 +8,7 @@ This repository currently contains one installer that installs only `3x-ui` and 
 - Panel port is optional (`--port`) and defaults to `2053`.
 - SSL cert setup is skipped by default (HTTP panel).
 - `apt-get update` is always executed before install.
+- `nload` is installed automatically.
 
 ## Files
 - `scripts/install-3x-ui.sh`: main installer script.
@@ -93,6 +94,7 @@ runcmd:
 - Script is designed for Debian/Ubuntu (`apt-get` + `systemd` required).
 - SSL cert config inside 3x-ui is reset/disabled by default.
 - Panel port is set to `2053` by default.
+- `nload` is installed during dependency setup.
 - Installer sets credentials and path after unpacking 3x-ui files.
 - Service is enabled and started automatically.
 
