@@ -21,6 +21,14 @@ sudo bash scripts/install-3x-ui.sh \
   --password "MyStrongPassword!"
 ```
 
+Run directly from GitHub (no local clone required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh
+chmod +x /usr/local/bin/install-3x-ui.sh
+sudo /usr/local/bin/install-3x-ui.sh --username "myadmin" --password "MyStrongPassword!"
+```
+
 Set a custom panel path:
 
 ```bash
@@ -50,10 +58,7 @@ sudo bash scripts/install-3x-ui.sh \
 - `--dry-run` (optional): prints commands without executing.
 
 ## Cloud-init Example
-Use `cloud-init/3x-ui-cloud-init.yaml` and replace:
-- `<YOUR_GITHUB_USER>`
-- `<YOUR_REPO>`
-- default username/password values
+Use `cloud-init/3x-ui-cloud-init.yaml` directly and only change username/password to your preferred values.
 
 Example with custom path:
 
@@ -64,7 +69,7 @@ packages:
   - curl
 
 runcmd:
-  - [bash, -lc, "curl -fsSL https://raw.githubusercontent.com/<YOUR_GITHUB_USER>/<YOUR_REPO>/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh"]
+  - [bash, -lc, "curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh"]
   - [chmod, "+x", "/usr/local/bin/install-3x-ui.sh"]
   - [bash, "-lc", "/usr/local/bin/install-3x-ui.sh --username 'myadmin' --password 'MyStrongPassword!' --path 'panel'"]
 ```
