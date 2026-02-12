@@ -5,6 +5,7 @@ Cloud-init focused server bootstrap scripts.
 This repository currently contains one installer that installs only `3x-ui` and configures it for cloud-init usage:
 - Username and password are set from CLI flags (`--username`, `--password`).
 - Panel path is optional (`--path`) and defaults to root (`/`).
+- Panel port is optional (`--port`) and defaults to `2053`.
 - SSL cert setup is skipped by default (HTTP panel).
 - `apt-get update` is always executed before install.
 
@@ -20,6 +21,8 @@ sudo bash scripts/install-3x-ui.sh \
   --username "myadmin" \
   --password "MyStrongPassword!"
 ```
+
+Default panel port is `2053` unless you set `--port`.
 
 Run directly from GitHub (no local clone required):
 
@@ -38,6 +41,15 @@ sudo bash scripts/install-3x-ui.sh \
   --path "panel"
 ```
 
+Set a custom panel port:
+
+```bash
+sudo bash scripts/install-3x-ui.sh \
+  --username "myadmin" \
+  --password "MyStrongPassword!" \
+  --port "8443"
+```
+
 Pin a specific 3x-ui version:
 
 ```bash
@@ -53,6 +65,9 @@ sudo bash scripts/install-3x-ui.sh \
 - `--path` (optional): custom panel URI path.
   - Example: `--path panel` gives `/panel/`.
   - Default: root path `/` (no custom path).
+- `--port` (optional): panel port.
+  - Example: `--port 8443`.
+  - Default: `2053`.
 - `--version` (optional): release tag to install.
   - Default: latest release from `MHSanaei/3x-ui`.
 - `--dry-run` (optional): prints commands without executing.
@@ -71,12 +86,13 @@ packages:
 runcmd:
   - [bash, -lc, "curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh"]
   - [chmod, "+x", "/usr/local/bin/install-3x-ui.sh"]
-  - [bash, "-lc", "/usr/local/bin/install-3x-ui.sh --username 'myadmin' --password 'MyStrongPassword!' --path 'panel'"]
+  - [bash, "-lc", "/usr/local/bin/install-3x-ui.sh --username 'myadmin' --password 'MyStrongPassword!' --path 'panel' --port '8443'"]
 ```
 
 ## Behavior Notes
 - Script is designed for Debian/Ubuntu (`apt-get` + `systemd` required).
 - SSL cert config inside 3x-ui is reset/disabled by default.
+- Panel port is set to `2053` by default.
 - Installer sets credentials and path after unpacking 3x-ui files.
 - Service is enabled and started automatically.
 

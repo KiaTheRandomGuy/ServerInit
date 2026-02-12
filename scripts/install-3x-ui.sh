@@ -9,6 +9,7 @@ XUI_SERVICE_FILE="/etc/systemd/system/x-ui.service"
 USERNAME=""
 PASSWORD=""
 PANEL_PATH=""
+PANEL_PORT="2053"
 VERSION=""
 DRY_RUN=0
 TMP_DIR=""
@@ -25,6 +26,8 @@ Required:
 Optional:
   --path <value>           Panel URL path (e.g. panel or admin/panel)
                            Default: root path (no custom path)
+  --port <value>           Panel port
+                           Default: 2053
   --version <value>        3x-ui release tag (e.g. v2.6.5)
                            Default: latest release
   --dry-run                Print commands without executing them
@@ -91,6 +94,15 @@ parse_args() {
         PANEL_PATH="${1#*=}"
         shift
         ;;
+      --port)
+        [[ $# -ge 2 ]] || die "Missing value for --port"
+        PANEL_PORT="$2"
+        shift 2
+        ;;
+      --port=*)
+        PANEL_PORT="${1#*=}"
+        shift
+        ;;
       --version)
         [[ $# -ge 2 ]] || die "Missing value for --version"
         VERSION="$2"
@@ -113,6 +125,12 @@ parse_args() {
         ;;
     esac
   done
+}
+
+validate_port() {
+  local port="$1"
+  [[ "${port}" =~ ^[0-9]+$ ]] || die "Invalid --port value: must be a number"
+  (( port >= 1 && port <= 65535 )) || die "Invalid --port value: must be between 1 and 65535"
 }
 
 normalize_panel_path() {
@@ -246,9 +264,10 @@ install_service_file() {
 
 configure_panel() {
   local effective_path="$1"
+  local panel_port="$2"
 
-  log "Configuring panel credentials and path"
-  run "${XUI_DIR}/x-ui" setting -username "${USERNAME}" -password "${PASSWORD}" -webBasePath "${effective_path}" -resetTwoFactor true
+  log "Configuring panel credentials, path, and port"
+  run "${XUI_DIR}/x-ui" setting -username "${USERNAME}" -password "${PASSWORD}" -port "${panel_port}" -webBasePath "${effective_path}" -resetTwoFactor true
 
   log "Disabling panel SSL certificate configuration (HTTP-only by default)"
   run "${XUI_DIR}/x-ui" cert -reset
@@ -296,6 +315,7 @@ main() {
 
   [[ -n "${USERNAME}" ]] || die "--username is required"
   [[ -n "${PASSWORD}" ]] || die "--password is required"
+  validate_port "${PANEL_PORT}"
 
   local effective_path="/"
   if [[ -n "${PANEL_PATH}" ]]; then
@@ -319,11 +339,12 @@ main() {
 
   log "Installing 3x-ui version: ${VERSION}"
   log "Using panel path: ${effective_path}"
+  log "Using panel port: ${PANEL_PORT}"
 
   download_and_unpack "${arch}" "${VERSION}"
   install_files "${arch}"
   install_service_file
-  configure_panel "${effective_path}"
+  configure_panel "${effective_path}" "${PANEL_PORT}"
   start_panel
   print_summary
 }

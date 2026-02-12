@@ -6,4 +6,4 @@ packages:
 runcmd:
   - [bash, -lc, "curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh"]
   - [chmod, "+x", "/usr/local/bin/install-3x-ui.sh"]
-  - [bash, "-lc", "/usr/local/bin/install-3x-ui.sh --username 'adminuser' --password 'StrongPassword123!'"]
+  - [bash, "-lc", "/usr/local/bin/install-3x-ui.sh --username 'adminuser' --password 'StrongPassword123!' --port '2053'"]
