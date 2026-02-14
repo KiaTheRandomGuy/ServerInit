@@ -6,8 +6,12 @@ REPO_NAME="3x-ui"
 XUI_DIR="/usr/local/x-ui"
 XUI_SERVICE_FILE="/etc/systemd/system/x-ui.service"
 
-USERNAME=""
-PASSWORD=""
+COMMON_USERNAME=""
+COMMON_PASSWORD=""
+PANEL_USERNAME=""
+PANEL_PASSWORD=""
+SYSTEM_USERNAME=""
+SYSTEM_PASSWORD=""
 PANEL_PATH=""
 PANEL_PORT="2053"
 VERSION=""
@@ -17,13 +21,19 @@ TMP_DIR=""
 usage() {
   cat <<'EOF'
 Usage:
-  install-3x-ui.sh --username <username> --password <password> [options]
+  install-3x-ui.sh [credential options] [other options]
 
-Required:
-  --username <value>       Panel username
-                           Also used for Linux system user creation
-  --password <value>       Panel password
-                           Also used for Linux system user password
+Credential options:
+  --username <value>       Shared username for both panel and Linux user
+  --password <value>       Shared password for both panel and Linux user
+  --panel-username <value> Panel username (can differ from Linux user)
+  --panel-password <value> Panel password (can differ from Linux user)
+  --server-username <value> Linux username with sudo privileges
+  --server-password <value> Linux user password
+
+Notes:
+  - You can use shared credentials via --username/--password.
+  - Or set panel and Linux credentials separately.
 
 Optional:
   --path <value>           Panel URL path (e.g. panel or admin/panel)
@@ -71,20 +81,56 @@ parse_args() {
     case "$1" in
       --username)
         [[ $# -ge 2 ]] || die "Missing value for --username"
-        USERNAME="$2"
+        COMMON_USERNAME="$2"
         shift 2
         ;;
       --username=*)
-        USERNAME="${1#*=}"
+        COMMON_USERNAME="${1#*=}"
         shift
         ;;
       --password)
         [[ $# -ge 2 ]] || die "Missing value for --password"
-        PASSWORD="$2"
+        COMMON_PASSWORD="$2"
         shift 2
         ;;
       --password=*)
-        PASSWORD="${1#*=}"
+        COMMON_PASSWORD="${1#*=}"
+        shift
+        ;;
+      --panel-username)
+        [[ $# -ge 2 ]] || die "Missing value for --panel-username"
+        PANEL_USERNAME="$2"
+        shift 2
+        ;;
+      --panel-username=*)
+        PANEL_USERNAME="${1#*=}"
+        shift
+        ;;
+      --panel-password)
+        [[ $# -ge 2 ]] || die "Missing value for --panel-password"
+        PANEL_PASSWORD="$2"
+        shift 2
+        ;;
+      --panel-password=*)
+        PANEL_PASSWORD="${1#*=}"
+        shift
+        ;;
+      --server-username)
+        [[ $# -ge 2 ]] || die "Missing value for --server-username"
+        SYSTEM_USERNAME="$2"
+        shift 2
+        ;;
+      --server-username=*)
+        SYSTEM_USERNAME="${1#*=}"
+        shift
+        ;;
+      --server-password)
+        [[ $# -ge 2 ]] || die "Missing value for --server-password"
+        SYSTEM_PASSWORD="$2"
+        shift 2
+        ;;
+      --server-password=*)
+        SYSTEM_PASSWORD="${1#*=}"
         shift
         ;;
       --path)
@@ -129,10 +175,27 @@ parse_args() {
   done
 }
 
+resolve_credentials() {
+  if [[ -n "${COMMON_USERNAME}" ]]; then
+    [[ -n "${PANEL_USERNAME}" ]] || PANEL_USERNAME="${COMMON_USERNAME}"
+    [[ -n "${SYSTEM_USERNAME}" ]] || SYSTEM_USERNAME="${COMMON_USERNAME}"
+  fi
+
+  if [[ -n "${COMMON_PASSWORD}" ]]; then
+    [[ -n "${PANEL_PASSWORD}" ]] || PANEL_PASSWORD="${COMMON_PASSWORD}"
+    [[ -n "${SYSTEM_PASSWORD}" ]] || SYSTEM_PASSWORD="${COMMON_PASSWORD}"
+  fi
+
+  [[ -n "${PANEL_USERNAME}" ]] || die "Missing panel username. Use --panel-username or --username"
+  [[ -n "${PANEL_PASSWORD}" ]] || die "Missing panel password. Use --panel-password or --password"
+  [[ -n "${SYSTEM_USERNAME}" ]] || die "Missing server username. Use --server-username or --username"
+  [[ -n "${SYSTEM_PASSWORD}" ]] || die "Missing server password. Use --server-password or --password"
+}
+
 validate_system_username() {
   local username="$1"
-  [[ "${username}" != "root" ]] || die "Invalid --username: 'root' is not allowed"
-  [[ "${username}" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid --username for Linux user. Use lowercase letters, numbers, _ or -, start with a letter/_ and max 32 chars"
+  [[ "${username}" != "root" ]] || die "Invalid --server-username: 'root' is not allowed"
+  [[ "${username}" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid --server-username for Linux user. Use lowercase letters, numbers, _ or -, start with a letter/_ and max 32 chars"
 }
 
 validate_port() {
@@ -201,28 +264,30 @@ install_dependencies() {
 }
 
 create_or_update_system_user() {
-  local sudoers_file="/etc/sudoers.d/90-${USERNAME}"
+  local username="$1"
+  local password="$2"
+  local sudoers_file="/etc/sudoers.d/90-${username}"
 
-  log "Creating/updating Linux user '${USERNAME}' with root-like sudo access"
-  if id -u "${USERNAME}" >/dev/null 2>&1; then
-    log "Linux user '${USERNAME}' already exists, updating password and privileges"
+  log "Creating/updating Linux user '${username}' with root-like sudo access"
+  if id -u "${username}" >/dev/null 2>&1; then
+    log "Linux user '${username}' already exists, updating password and privileges"
   else
-    run useradd -m -s /bin/bash "${USERNAME}"
+    run useradd -m -s /bin/bash "${username}"
   fi
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
-    log "DRY-RUN: would set Linux password for user '${USERNAME}'"
+    log "DRY-RUN: would set Linux password for user '${username}'"
   else
-    chpasswd <<<"${USERNAME}:${PASSWORD}"
+    chpasswd <<<"${username}:${password}"
   fi
 
-  run usermod -aG sudo "${USERNAME}"
+  run usermod -aG sudo "${username}"
   run mkdir -p /etc/sudoers.d
 
   if [[ "${DRY_RUN}" -eq 1 ]]; then
     log "DRY-RUN: would create '${sudoers_file}' with NOPASSWD sudo rule"
   else
-    printf '%s ALL=(ALL:ALL) NOPASSWD:ALL\n' "${USERNAME}" > "${sudoers_file}"
+    printf '%s ALL=(ALL:ALL) NOPASSWD:ALL\n' "${username}" > "${sudoers_file}"
     chmod 440 "${sudoers_file}"
     visudo -cf "${sudoers_file}" >/dev/null
   fi
@@ -299,11 +364,13 @@ install_service_file() {
 }
 
 configure_panel() {
-  local effective_path="$1"
-  local panel_port="$2"
+  local panel_username="$1"
+  local panel_password="$2"
+  local effective_path="$3"
+  local panel_port="$4"
 
   log "Configuring panel credentials, path, and port"
-  run "${XUI_DIR}/x-ui" setting -username "${USERNAME}" -password "${PASSWORD}" -port "${panel_port}" -webBasePath "${effective_path}" -resetTwoFactor true
+  run "${XUI_DIR}/x-ui" setting -username "${panel_username}" -password "${panel_password}" -port "${panel_port}" -webBasePath "${effective_path}" -resetTwoFactor true
 
   log "Disabling panel SSL certificate configuration (HTTP-only by default)"
   run "${XUI_DIR}/x-ui" cert -reset
@@ -337,8 +404,10 @@ print_summary() {
 
   printf '\n'
   printf '3x-ui installation completed.\n'
-  printf 'Username: %s\n' "${USERNAME}"
-  printf 'Password: %s\n' "${PASSWORD}"
+  printf 'Panel Username: %s\n' "${PANEL_USERNAME}"
+  printf 'Panel Password: %s\n' "${PANEL_PASSWORD}"
+  printf 'Server Username: %s\n' "${SYSTEM_USERNAME}"
+  printf 'Server Password: %s\n' "${SYSTEM_PASSWORD}"
   printf 'SSL: disabled by default\n'
   printf 'Panel URL: http://%s:%s%s\n' "${host}" "${port}" "${base_path}"
 }
@@ -349,9 +418,8 @@ main() {
   parse_args "$@"
   ensure_root_and_platform
 
-  [[ -n "${USERNAME}" ]] || die "--username is required"
-  [[ -n "${PASSWORD}" ]] || die "--password is required"
-  validate_system_username "${USERNAME}"
+  resolve_credentials
+  validate_system_username "${SYSTEM_USERNAME}"
   validate_port "${PANEL_PORT}"
 
   local effective_path="/"
@@ -360,7 +428,7 @@ main() {
   fi
 
   install_dependencies
-  create_or_update_system_user
+  create_or_update_system_user "${SYSTEM_USERNAME}" "${SYSTEM_PASSWORD}"
 
   if [[ -z "${VERSION}" ]]; then
     VERSION="$(latest_version)"
@@ -378,11 +446,13 @@ main() {
   log "Installing 3x-ui version: ${VERSION}"
   log "Using panel path: ${effective_path}"
   log "Using panel port: ${PANEL_PORT}"
+  log "Using panel username: ${PANEL_USERNAME}"
+  log "Using server username: ${SYSTEM_USERNAME}"
 
   download_and_unpack "${arch}" "${VERSION}"
   install_files "${arch}"
   install_service_file
-  configure_panel "${effective_path}" "${PANEL_PORT}"
+  configure_panel "${PANEL_USERNAME}" "${PANEL_PASSWORD}" "${effective_path}" "${PANEL_PORT}"
   start_panel
   print_summary
 }
