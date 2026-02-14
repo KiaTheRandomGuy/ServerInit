@@ -21,19 +21,27 @@ This repository currently contains one installer that installs only `3x-ui` and 
 Run directly on a Debian/Ubuntu server:
 
 ```bash
+PANEL_USER="myadmin"
+PANEL_PASS="MyStrongPassword!"
+
 sudo bash scripts/install-3x-ui.sh \
-  --username "myadmin" \
-  --password "MyStrongPassword!"
+  --username "${PANEL_USER}" \
+  --password "${PANEL_PASS}"
 ```
 
 Use different credentials for 3x-ui and Linux user:
 
 ```bash
+PANEL_USER="paneladmin"
+PANEL_PASS="PanelStrongPassword!"
+SERVER_USER="serveradmin"
+SERVER_PASS="ServerStrongPassword!"
+
 sudo bash scripts/install-3x-ui.sh \
-  --panel-username "paneladmin" \
-  --panel-password "PanelStrongPassword!" \
-  --server-username "serveradmin" \
-  --server-password "ServerStrongPassword!"
+  --panel-username "${PANEL_USER}" \
+  --panel-password "${PANEL_PASS}" \
+  --server-username "${SERVER_USER}" \
+  --server-password "${SERVER_PASS}"
 ```
 
 Default panel port is `2053` unless you set `--port`.
@@ -41,9 +49,12 @@ Default panel port is `2053` unless you set `--port`.
 Run directly from GitHub (no local clone required):
 
 ```bash
+PANEL_USER="myadmin"
+PANEL_PASS="MyStrongPassword!"
+
 curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh -o /usr/local/bin/install-3x-ui.sh
 chmod +x /usr/local/bin/install-3x-ui.sh
-sudo /usr/local/bin/install-3x-ui.sh --username "myadmin" --password "MyStrongPassword!"
+sudo /usr/local/bin/install-3x-ui.sh --username "${PANEL_USER}" --password "${PANEL_PASS}"
 ```
 
 ## One-Command Recipes
@@ -56,40 +67,52 @@ curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/clo
 Install 3x-ui + create/update Linux admin user in one command:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh) --panel-username "paneladmin" --panel-password "PanelStrongPassword!" --server-username "serveradmin" --server-password "ServerStrongPassword!" --port "2053"
+PANEL_USER="paneladmin"; PANEL_PASS="PanelStrongPassword!"; SERVER_USER="serveradmin"; SERVER_PASS="ServerStrongPassword!"; PANEL_PORT="2053"; bash <(curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh) --panel-username "${PANEL_USER}" --panel-password "${PANEL_PASS}" --server-username "${SERVER_USER}" --server-password "${SERVER_PASS}" --port "${PANEL_PORT}"
 ```
 
 Create a Linux sudo user only (without touching 3x-ui):
 
 ```bash
-sudo useradd -m -s /bin/bash serveradmin && echo "serveradmin:ServerStrongPassword!" | sudo chpasswd && sudo usermod -aG sudo serveradmin && echo "serveradmin ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/90-serveradmin >/dev/null && sudo chmod 440 /etc/sudoers.d/90-serveradmin && sudo visudo -cf /etc/sudoers.d/90-serveradmin
+SERVER_USER="serveradmin"; SERVER_PASS="ServerStrongPassword!"; sudo useradd -m -s /bin/bash "${SERVER_USER}" && echo "${SERVER_USER}:${SERVER_PASS}" | sudo chpasswd && sudo usermod -aG sudo "${SERVER_USER}" && echo "${SERVER_USER} ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/90-${SERVER_USER}" >/dev/null && sudo chmod 440 "/etc/sudoers.d/90-${SERVER_USER}" && sudo visudo -cf "/etc/sudoers.d/90-${SERVER_USER}"
 ```
 
 Set a custom panel path:
 
 ```bash
+PANEL_USER="myadmin"
+PANEL_PASS="MyStrongPassword!"
+PANEL_PATH="panel"
+
 sudo bash scripts/install-3x-ui.sh \
-  --username "myadmin" \
-  --password "MyStrongPassword!" \
-  --path "panel"
+  --username "${PANEL_USER}" \
+  --password "${PANEL_PASS}" \
+  --path "${PANEL_PATH}"
 ```
 
 Set a custom panel port:
 
 ```bash
+PANEL_USER="myadmin"
+PANEL_PASS="MyStrongPassword!"
+PANEL_PORT="8443"
+
 sudo bash scripts/install-3x-ui.sh \
-  --username "myadmin" \
-  --password "MyStrongPassword!" \
-  --port "8443"
+  --username "${PANEL_USER}" \
+  --password "${PANEL_PASS}" \
+  --port "${PANEL_PORT}"
 ```
 
 Pin a specific 3x-ui version:
 
 ```bash
+PANEL_USER="myadmin"
+PANEL_PASS="MyStrongPassword!"
+XUI_VERSION="v2.6.5"
+
 sudo bash scripts/install-3x-ui.sh \
-  --username "myadmin" \
-  --password "MyStrongPassword!" \
-  --version "v2.6.5"
+  --username "${PANEL_USER}" \
+  --password "${PANEL_PASS}" \
+  --version "${XUI_VERSION}"
 ```
 
 ## Parameters
