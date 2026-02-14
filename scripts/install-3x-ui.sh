@@ -21,7 +21,9 @@ Usage:
 
 Required:
   --username <value>       Panel username
+                           Also used for Linux system user creation
   --password <value>       Panel password
+                           Also used for Linux system user password
 
 Optional:
   --path <value>           Panel URL path (e.g. panel or admin/panel)
@@ -127,6 +129,12 @@ parse_args() {
   done
 }
 
+validate_system_username() {
+  local username="$1"
+  [[ "${username}" != "root" ]] || die "Invalid --username: 'root' is not allowed"
+  [[ "${username}" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || die "Invalid --username for Linux user. Use lowercase letters, numbers, _ or -, start with a letter/_ and max 32 chars"
+}
+
 validate_port() {
   local port="$1"
   [[ "${port}" =~ ^[0-9]+$ ]] || die "Invalid --port value: must be a number"
@@ -189,7 +197,35 @@ install_dependencies() {
   log "Running apt update and installing dependencies"
   export DEBIAN_FRONTEND=noninteractive
   run apt-get update
-  run apt-get install -y --no-install-recommends curl tar ca-certificates nload fzf figlet
+  run apt-get install -y --no-install-recommends curl tar ca-certificates sudo nload fzf figlet
+}
+
+create_or_update_system_user() {
+  local sudoers_file="/etc/sudoers.d/90-${USERNAME}"
+
+  log "Creating/updating Linux user '${USERNAME}' with root-like sudo access"
+  if id -u "${USERNAME}" >/dev/null 2>&1; then
+    log "Linux user '${USERNAME}' already exists, updating password and privileges"
+  else
+    run useradd -m -s /bin/bash "${USERNAME}"
+  fi
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    log "DRY-RUN: would set Linux password for user '${USERNAME}'"
+  else
+    chpasswd <<<"${USERNAME}:${PASSWORD}"
+  fi
+
+  run usermod -aG sudo "${USERNAME}"
+  run mkdir -p /etc/sudoers.d
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    log "DRY-RUN: would create '${sudoers_file}' with NOPASSWD sudo rule"
+  else
+    printf '%s ALL=(ALL:ALL) NOPASSWD:ALL\n' "${USERNAME}" > "${sudoers_file}"
+    chmod 440 "${sudoers_file}"
+    visudo -cf "${sudoers_file}" >/dev/null
+  fi
 }
 
 download_and_unpack() {
@@ -315,6 +351,7 @@ main() {
 
   [[ -n "${USERNAME}" ]] || die "--username is required"
   [[ -n "${PASSWORD}" ]] || die "--password is required"
+  validate_system_username "${USERNAME}"
   validate_port "${PANEL_PORT}"
 
   local effective_path="/"
@@ -323,6 +360,7 @@ main() {
   fi
 
   install_dependencies
+  create_or_update_system_user
 
   if [[ -z "${VERSION}" ]]; then
     VERSION="$(latest_version)"

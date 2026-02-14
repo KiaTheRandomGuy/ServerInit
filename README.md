@@ -4,11 +4,12 @@ Cloud-init focused server bootstrap scripts.
 
 This repository currently contains one installer that installs only `3x-ui` and configures it for cloud-init usage:
 - Username and password are set from CLI flags (`--username`, `--password`).
+- A Linux user is created/updated with the same username/password and root-like sudo access.
 - Panel path is optional (`--path`) and defaults to root (`/`).
 - Panel port is optional (`--port`) and defaults to `2053`.
 - SSL cert setup is skipped by default (HTTP panel).
 - `apt-get update` is always executed before install.
-- `nload`, `fzf`, and `figlet` are installed automatically.
+- `sudo`, `nload`, `fzf`, and `figlet` are installed automatically.
 
 ## Files
 - `scripts/install-3x-ui.sh`: main installer script.
@@ -61,8 +62,9 @@ sudo bash scripts/install-3x-ui.sh \
 ```
 
 ## Parameters
-- `--username` (required): panel username.
-- `--password` (required): panel password.
+- `--username` (required): panel username and Linux username.
+  - Linux username must match: lowercase letters/numbers/`_`/`-`, start with letter or `_`, max 32 chars.
+- `--password` (required): panel password and Linux user password.
 - `--path` (optional): custom panel URI path.
   - Example: `--path panel` gives `/panel/`.
   - Default: root path `/` (no custom path).
@@ -94,7 +96,8 @@ runcmd:
 - Script is designed for Debian/Ubuntu (`apt-get` + `systemd` required).
 - SSL cert config inside 3x-ui is reset/disabled by default.
 - Panel port is set to `2053` by default.
-- `nload`, `fzf`, and `figlet` are installed during dependency setup.
+- Linux user gets `NOPASSWD` sudo (`ALL=(ALL:ALL) NOPASSWD:ALL`).
+- `sudo`, `nload`, `fzf`, and `figlet` are installed during dependency setup.
 - Installer sets credentials and path after unpacking 3x-ui files.
 - Service is enabled and started automatically.
 
