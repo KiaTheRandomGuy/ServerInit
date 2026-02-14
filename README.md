@@ -46,6 +46,25 @@ chmod +x /usr/local/bin/install-3x-ui.sh
 sudo /usr/local/bin/install-3x-ui.sh --username "myadmin" --password "MyStrongPassword!"
 ```
 
+## One-Command Recipes
+Run full cloud-config on an existing Ubuntu server (for testing):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/cloud-init/3x-ui-cloud-init.yaml | sudo cloud-init devel schema --config-file /dev/stdin >/dev/null && curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/cloud-init/3x-ui-cloud-init.yaml | sudo tee /root/cloud-init-3x-ui.yaml >/dev/null && sudo cloud-init single --name cc_runcmd --frequency always --file /root/cloud-init-3x-ui.yaml
+```
+
+Install 3x-ui + create/update Linux admin user in one command:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/KiaTheRandomGuy/ServerInit/main/scripts/install-3x-ui.sh) --panel-username "paneladmin" --panel-password "PanelStrongPassword!" --server-username "serveradmin" --server-password "ServerStrongPassword!" --port "2053"
+```
+
+Create a Linux sudo user only (without touching 3x-ui):
+
+```bash
+sudo useradd -m -s /bin/bash serveradmin && echo "serveradmin:ServerStrongPassword!" | sudo chpasswd && sudo usermod -aG sudo serveradmin && echo "serveradmin ALL=(ALL:ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/90-serveradmin >/dev/null && sudo chmod 440 /etc/sudoers.d/90-serveradmin && sudo visudo -cf /etc/sudoers.d/90-serveradmin
+```
+
 Set a custom panel path:
 
 ```bash

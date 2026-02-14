@@ -406,10 +406,12 @@ print_summary() {
     return
   fi
 
-  local port base_path host
-  port="$("${XUI_DIR}/x-ui" setting -show true | awk '/port:/{print $2; exit}')"
-  base_path="$("${XUI_DIR}/x-ui" setting -show true | awk '/webBasePath:/{print $2; exit}')"
-  host="$(hostname -I 2>/dev/null | awk '{print $1}')"
+  local settings port base_path host
+  settings="$("${XUI_DIR}/x-ui" setting -show true 2>/dev/null || true)"
+  port="$(printf '%s\n' "${settings}" | awk '/^port:[[:space:]]/{print $2}')"
+  base_path="$(printf '%s\n' "${settings}" | awk '/^webBasePath:[[:space:]]/{print $2}')"
+  host="$(hostname -I 2>/dev/null || true)"
+  host="${host%% *}"
 
   [[ -n "${port}" ]] || port="<panel-port>"
   [[ -n "${base_path}" ]] || base_path="/"
