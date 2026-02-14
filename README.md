@@ -11,6 +11,7 @@ This repository currently contains one installer that installs only `3x-ui` and 
 - SSL cert setup is skipped by default (HTTP panel).
 - `apt-get update` is always executed before install.
 - `sudo`, `nload`, `fzf`, and `figlet` are installed automatically.
+- If `3x-ui` is already healthy/running, the script skips reinstall by default.
 
 ## Files
 - `scripts/install-3x-ui.sh`: main installer script.
@@ -91,6 +92,7 @@ sudo bash scripts/install-3x-ui.sh \
   - Default: `2053`.
 - `--version` (optional): release tag to install.
   - Default: latest release from `MHSanaei/3x-ui`.
+- `--force` (optional): force reinstall even if `3x-ui` is already healthy/running.
 - `--dry-run` (optional): prints commands without executing.
 
 ## Cloud-init Example
@@ -115,10 +117,15 @@ runcmd:
 - SSL cert config inside 3x-ui is reset/disabled by default.
 - Panel port is set to `2053` by default.
 - Panel and Linux credentials can be shared or separate.
+- If panel is already healthy and running, reinstall is skipped unless `--force` is passed.
 - Linux user gets `NOPASSWD` sudo (`ALL=(ALL:ALL) NOPASSWD:ALL`).
 - `sudo`, `nload`, `fzf`, and `figlet` are installed during dependency setup.
 - Installer sets credentials and path after unpacking 3x-ui files.
 - Service is enabled and started automatically.
+
+## Cloud-init Reboot Behavior
+- `runcmd` runs once per instance on first boot, not on every reboot.
+- It runs again only if you reprovision the server or manually clean cloud-init state.
 
 ## Validation Commands
 ```bash

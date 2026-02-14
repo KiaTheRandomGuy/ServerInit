@@ -16,6 +16,7 @@ PANEL_PATH=""
 PANEL_PORT="2053"
 VERSION=""
 DRY_RUN=0
+FORCE_REINSTALL=0
 TMP_DIR=""
 
 usage() {
@@ -42,6 +43,7 @@ Optional:
                            Default: 2053
   --version <value>        3x-ui release tag (e.g. v2.6.5)
                            Default: latest release
+  --force                  Force reinstall even if 3x-ui is already healthy
   --dry-run                Print commands without executing them
   -h, --help               Show help
 EOF
@@ -160,6 +162,10 @@ parse_args() {
         VERSION="${1#*=}"
         shift
         ;;
+      --force)
+        FORCE_REINSTALL=1
+        shift
+        ;;
       --dry-run)
         DRY_RUN=1
         shift
@@ -254,6 +260,13 @@ ensure_root_and_platform() {
   [[ "${EUID}" -eq 0 ]] || die "This script must run as root"
   command -v apt-get >/dev/null 2>&1 || die "This installer currently supports Debian/Ubuntu only (apt-get is required)"
   command -v systemctl >/dev/null 2>&1 || die "systemctl is required"
+}
+
+is_panel_healthy() {
+  [[ -x "${XUI_DIR}/x-ui" ]] || return 1
+  systemctl is-active --quiet x-ui >/dev/null 2>&1 || return 1
+  "${XUI_DIR}/x-ui" setting -show true >/dev/null 2>&1 || return 1
+  return 0
 }
 
 install_dependencies() {
@@ -417,6 +430,12 @@ main() {
 
   parse_args "$@"
   ensure_root_and_platform
+
+  if [[ "${FORCE_REINSTALL}" -eq 0 ]] && is_panel_healthy; then
+    log "3x-ui is already installed and running healthy; skipping reinstall."
+    log "Use --force if you want to reinstall anyway."
+    exit 0
+  fi
 
   resolve_credentials
   validate_system_username "${SYSTEM_USERNAME}"
