@@ -269,6 +269,77 @@ is_panel_healthy() {
   return 0
 }
 
+ensure_ssh_password_auth_enabled() {
+  local files=()
+  local file=""
+  local found_yes=0
+  local changed=0
+  local dropin_file="/etc/ssh/sshd_config.d/99-enable-password-auth.conf"
+
+  [[ -f /etc/ssh/sshd_config ]] && files+=("/etc/ssh/sshd_config")
+  if [[ -d /etc/ssh/sshd_config.d ]]; then
+    while IFS= read -r -d '' file; do
+      files+=("${file}")
+    done < <(find /etc/ssh/sshd_config.d -maxdepth 1 -type f -name "*.conf" -print0 | sort -z)
+  fi
+
+  log "Ensuring SSH password authentication is enabled"
+
+  for file in "${files[@]}"; do
+    if grep -Eiq '^[[:space:]]*PasswordAuthentication[[:space:]]+yes([[:space:]]|$)' "${file}"; then
+      found_yes=1
+    fi
+
+    if grep -Eiq '^[[:space:]]*PasswordAuthentication[[:space:]]+no([[:space:]]|$)' "${file}"; then
+      if [[ "${DRY_RUN}" -eq 1 ]]; then
+        log "DRY-RUN: would update '${file}' to set PasswordAuthentication yes"
+      else
+        cp -a "${file}" "${file}.bak.codex"
+        sed -Ei 's/^[[:space:]]*PasswordAuthentication[[:space:]]+no([[:space:]]*(#.*)?)?$/PasswordAuthentication yes\1/I' "${file}"
+      fi
+      changed=1
+      found_yes=1
+    fi
+  done
+
+  if [[ "${found_yes}" -eq 0 ]]; then
+    if [[ "${DRY_RUN}" -eq 1 ]]; then
+      log "DRY-RUN: would create '${dropin_file}' with PasswordAuthentication yes"
+    else
+      mkdir -p /etc/ssh/sshd_config.d
+      printf 'PasswordAuthentication yes\n' > "${dropin_file}"
+      chmod 644 "${dropin_file}"
+    fi
+    changed=1
+  fi
+
+  if [[ "${changed}" -eq 0 ]]; then
+    log "SSH password authentication is already enabled; no SSH config changes needed"
+    return 0
+  fi
+
+  if [[ "${DRY_RUN}" -eq 1 ]]; then
+    log "DRY-RUN: would validate SSH config and reload SSH service"
+    return 0
+  fi
+
+  if command -v sshd >/dev/null 2>&1; then
+    sshd -t || die "sshd config validation failed after updating PasswordAuthentication"
+  fi
+
+  if systemctl reload ssh >/dev/null 2>&1; then
+    log "Reloaded ssh service"
+  elif systemctl restart ssh >/dev/null 2>&1; then
+    log "Restarted ssh service"
+  elif systemctl reload sshd >/dev/null 2>&1; then
+    log "Reloaded sshd service"
+  elif systemctl restart sshd >/dev/null 2>&1; then
+    log "Restarted sshd service"
+  else
+    warn "Could not reload/restart SSH service automatically; please run: systemctl restart ssh"
+  fi
+}
+
 install_dependencies() {
   log "Running apt update and installing dependencies"
   export DEBIAN_FRONTEND=noninteractive
@@ -433,12 +504,6 @@ main() {
   parse_args "$@"
   ensure_root_and_platform
 
-  if [[ "${FORCE_REINSTALL}" -eq 0 ]] && is_panel_healthy; then
-    log "3x-ui is already installed and running healthy; skipping reinstall."
-    log "Use --force if you want to reinstall anyway."
-    exit 0
-  fi
-
   resolve_credentials
   validate_system_username "${SYSTEM_USERNAME}"
   validate_port "${PANEL_PORT}"
@@ -450,6 +515,13 @@ main() {
 
   install_dependencies
   create_or_update_system_user "${SYSTEM_USERNAME}" "${SYSTEM_PASSWORD}"
+  ensure_ssh_password_auth_enabled
+
+  if [[ "${FORCE_REINSTALL}" -eq 0 ]] && is_panel_healthy; then
+    log "3x-ui is already installed and running healthy; skipping reinstall."
+    log "Use --force if you want to reinstall anyway."
+    exit 0
+  fi
 
   if [[ -z "${VERSION}" ]]; then
     VERSION="$(latest_version)"

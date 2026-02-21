@@ -9,6 +9,7 @@ This repository currently contains one installer that installs only `3x-ui` and 
 - Panel path is optional (`--path`) and defaults to root (`/`).
 - Panel port is optional (`--port`) and defaults to `2053`.
 - SSL cert setup is skipped by default (HTTP panel).
+- SSH password authentication is enforced (`PasswordAuthentication yes`).
 - `apt-get update` is always executed before install.
 - `sudo`, `nload`, `fzf`, and `figlet` are installed automatically.
 - If `3x-ui` is already healthy/running, the script skips reinstall by default.
@@ -157,6 +158,10 @@ runcmd:
 ## Behavior Notes
 - Script is designed for Debian/Ubuntu (`apt-get` + `systemd` required).
 - SSL cert config inside 3x-ui is reset/disabled by default.
+- SSH password authentication is enabled by scanning:
+  - `/etc/ssh/sshd_config`
+  - `/etc/ssh/sshd_config.d/*.conf`
+  and replacing `PasswordAuthentication no` with `yes`, or adding a drop-in if missing.
 - Panel port is set to `2053` by default.
 - Panel and Linux credentials can be shared or separate.
 - If panel is already healthy and running, reinstall is skipped unless `--force` is passed.
